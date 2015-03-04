@@ -1,0 +1,10 @@
+ls:/home/rounak/Dropbox/Current Sem/Operating Systems/Lab/Assignment1/MyShell/ls
+pwd:/home/rounak/Dropbox/Current Sem/Operating Systems/Lab/Assignment1/MyShell/pwd
+echo:/home/rounak/Dropbox/Current Sem/Operating Systems/Lab/Assignment1/MyShell/echo
+clear:/usr/bin/clear
+reset:/usr/bin/reset
+cat:/bin/cat
+cp:/bin/cp
+rm:/bin/rm
+mv:/bin/mv
+envtest:/home/rounak/Dropbox/Current Sem/Operating Systems/Lab/Assignment1/MyShell/envtest
