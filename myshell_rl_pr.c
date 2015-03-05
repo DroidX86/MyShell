@@ -363,8 +363,70 @@ int is_pipe_or_arrow(char* token)
 		return 0;
 }
 
+/** start execution of a command located at command_tokens[i] **/
+void execute_command(int i)
+{
+	int loc_index = is_installed(i),next;
+	next = i;
+	int decide = is_pipe_or_arrow(command_tokens[next]);
+	while (1) {
+		if ((decide != 0) || next == num_tokens-1 ) //break if delimiter found or this is the last token
+			break;
+		++next;
+		decide = is_pipe_or_arrow(command_tokens[next]);
+	}
+	
+	if (loc_index != -1) {
+		//set up argv
+		int j=1,k = i+1;
+		for (; k<next; k++, j++) {
+			c_argv[j] = command_tokens[k];
+		}
+		char* com = prog_locs[loc_index];
+		c_argv[0] = com;
+		c_argv[j] = NULL;
+		
+		int piped = 0;
+		switch(decide) {
+			case PIPE:	//setup a pipe
+			
+				piped = 1;
+				break;
+			case DUMP_CLEAR:	//set up i/o redirection
+			
+				break;
+			case DUMP_APPEND:
+			
+				break;
+			case TAKE:
+			
+				break;
+			default:	//do nothing special
+			
+				break;
+		}
+		//fork the process here, if piped then do recursive call with next+1 from child
+		pid_t cpid = fork();
+		if (cpid == 0) {	//child
+			if (piped) {	//recursive part
+				
+			}	
+			//exec call
+			
+		} else {		//parent
+			if (i == 0) {	//shell parent, so wait
+				
+			} else {	//not shell parent, so return
+				
+			}
+		}
+		
+	} else 
+		printf("Command not found!\n");
+}
+
 /** Execute a command string with piping and redirection **/
-void execute_command() 
+void execute_command_chain() 
 {
 	//set environment
 	int i, j;
@@ -376,38 +438,8 @@ void execute_command()
 		}
 	}
 	c_envp[j] = NULL;
-	int dump;	//what did the last command do? pipe or redirect?
 	
-	for (i=0; i<num_tokens; ) {
-		j = i;
-		printf("Start: i = %d, j = %d\n", i, j);
-		//printf("checking...%s\n", command_tokens[j]);
-		int decide = is_pipe_or_arrow(command_tokens[j]);
-		while (1) {
-			//printf("j in loop = %d\n", j);
-			if ((decide != 0) || j == num_tokens-1 ) //break if delimiter found or this is the last token
-				break;
-			++j;
-			decide = is_pipe_or_arrow(command_tokens[j]);
-			//printf("j in loop after check= %d\n", j);
-		}
-		int k;
-		//printf("updated j = %d\n", j);
-		/*if (j == num_tokens)
-			--j;*/
-		printf("DO HERE: i = %d, j = %d\n", i, j);	//business end: [i, j) is the part which needs to be forked; j decides what to do about i/o;
-								//if i==j then it's use last j to decide, pipe implies fork, other implies dump 
-		for (k=i; k<=j; k++)
-				printf("%s, ", command_tokens[k]);
-		printf("\n");
-		/* main part */
-		
-		
-		
-		/* end of main part */
-		i = j+1;
-		printf("End: i = %d, j = %d\n\n", i, j);
-	}
+	execute_command(0);
 }
 
 /** Search command_name against list of built ins **/
@@ -496,3 +528,39 @@ int main(void)
 	printf("\n");	
 	return 0;
 }
+
+
+/**
+int dump;	//what did the last command do? pipe or redirect?
+	
+	for (i=0; i<num_tokens; ) {
+		j = i;
+		printf("Start: i = %d, j = %d\n", i, j);
+		//printf("checking...%s\n", command_tokens[j]);
+		int decide = is_pipe_or_arrow(command_tokens[j]);
+		while (1) {
+			//printf("j in loop = %d\n", j);
+			if ((decide != 0) || j == num_tokens-1 ) //break if delimiter found or this is the last token
+				break;
+			++j;
+			decide = is_pipe_or_arrow(command_tokens[j]);
+			//printf("j in loop after check= %d\n", j);
+		}
+		int k;
+		//printf("updated j = %d\n", j);
+		/*if (j == num_tokens)
+			--j;
+		printf("DO HERE: i = %d, j = %d\n", i, j);	//business end: [i, j) is the part which needs to be forked; j decides what to do about i/o;
+								//if i==j then it's use last j to decide, pipe implies fork, other implies dump 
+		for (k=i; k<=j; k++)
+				printf("%s, ", command_tokens[k]);
+		printf("\n");
+		/* main part */
+		
+		
+		
+		/* end of main part 
+		i = j+1;
+		printf("End: i = %d, j = %d\n\n", i, j);
+	}
+**/
