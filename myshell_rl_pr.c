@@ -18,6 +18,11 @@
 #define ENV_VAR_NMSIZE 256
 #define ENV_VAR_SIZE 1024
 
+#define DUMP_CLEAR 42
+#define PIPE 36
+#define DUMP_APPEND 49
+#define TAKE 69
+
 //global variables
 char command_line[MAX_COMMAND_LEN];
 char* command_tokens[MAX_TOKENS];
@@ -280,11 +285,11 @@ void get_line()
 }
 
 /** Search command_name against list of installed programs in locs **/
-int is_installed()
+int is_installed(int index)
 {
 	int i;
 	for(i=0; i<num_progs; i++){
-		if ( strcmp(programs[i], command_tokens[0]) == 0 ){
+		if ( strcmp(programs[i], command_tokens[index]) == 0 ){
 			return i;
 		}
 	}
@@ -292,9 +297,9 @@ int is_installed()
 }
 
 /** Run the installed executable with the rest of the tokens passed as arguments **/
-void execute_command()
+void execute_single_command()
 {
-	int loc_index = is_installed(), cstat;
+	int loc_index = is_installed(0), cstat;
 	if ( loc_index != -1 ) {
 		char* com = prog_locs[loc_index];
 		int i=1, t, j;
@@ -336,6 +341,73 @@ void execute_command()
 	}
 	else
 		printf("Command not found!\n");
+}
+
+/** check if a command token is a pipe '|' or arrow '>', '<', '>>' etc. **/
+//XXX: this stuff can be optimized
+int is_pipe_or_arrow(char* token)
+{
+	if (!token){
+		printf("NULL passed");
+		exit(EXIT_FAILURE);
+	}
+	if (strcmp(token, "|") == 0)
+		return PIPE;
+	else if (strcmp(token, ">") == 0)
+		return DUMP_CLEAR;
+	else if (strcmp(token, "<") == 0)
+		return TAKE;
+	else if (strcmp(token, ">>") == 0)
+		return DUMP_APPEND;
+	else
+		return 0;
+}
+
+/** Execute a command string with piping and redirection **/
+void execute_command() 
+{
+	//set environment
+	int i, j;
+	for ( i=0, j=0; i<env_var_count; i++ ) {
+		if ( env_variables[i] ) {
+			c_envp[j] = (char*)malloc(1024);
+			sprintf(c_envp[j], "%s=%s", env_variables[i], env_var_values[i]);
+			j++;
+		}
+	}
+	c_envp[j] = NULL;
+	int dump;	//what did the last command do? pipe or redirect?
+	
+	for (i=0; i<num_tokens; ) {
+		j = i;
+		printf("Start: i = %d, j = %d\n", i, j);
+		//printf("checking...%s\n", command_tokens[j]);
+		int decide = is_pipe_or_arrow(command_tokens[j]);
+		while (1) {
+			//printf("j in loop = %d\n", j);
+			if ((decide != 0) || j == num_tokens-1 ) //break if delimiter found or this is the last token
+				break;
+			++j;
+			decide = is_pipe_or_arrow(command_tokens[j]);
+			//printf("j in loop after check= %d\n", j);
+		}
+		int k;
+		//printf("updated j = %d\n", j);
+		/*if (j == num_tokens)
+			--j;*/
+		printf("DO HERE: i = %d, j = %d\n", i, j);	//business end: [i, j) is the part which needs to be forked; j decides what to do about i/o;
+								//if i==j then it's use last j to decide, pipe implies fork, other implies dump 
+		for (k=i; k<=j; k++)
+				printf("%s, ", command_tokens[k]);
+		printf("\n");
+		/* main part */
+		
+		
+		
+		/* end of main part */
+		i = j+1;
+		printf("End: i = %d, j = %d\n\n", i, j);
+	}
 }
 
 /** Search command_name against list of built ins **/
@@ -408,13 +480,18 @@ int main(void)
 		clear_command();
 	}
 	*/
-	strcpy(command_line, readline(""));
+	strcpy(command_line, "cat file");
+	
 	tokenize_command();
 	
 	int i;
-	for (i=0; i<num_tokens; i++) {
-		printf("%s\n", command_tokens[i]);
+	printf("Tokens array: \n");
+	for (i=0; i< num_tokens; i++) {
+		printf("%d = %s\n", i, command_tokens[i]);
 	}
+	printf("End of tokens array\n\n");
+	
+	execute_command();	
 	
 	printf("\n");	
 	return 0;
