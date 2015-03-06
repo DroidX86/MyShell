@@ -363,7 +363,8 @@ int is_pipe_or_arrow(char* token)
 		return 0;
 }
 
-/** start execution of a command located at command_tokens[i] **/
+/** Start execution of a command located at command_tokens[i] **/
+//XXX: Incredibly dangerous function
 void execute_command(int i)
 {
 	int loc_index = is_installed(i),next;
