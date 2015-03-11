@@ -388,42 +388,64 @@ void execute_command(int i)
 		c_argv[j] = NULL;
 		
 		int piped = 0;
+		int npipe[2], fdi, fdo;	//file descriptors for i/o
 		switch(decide) {
 			case PIPE:	//setup a pipe
-			
+				if (pipe(npipe) == -1) {
+					perror("Pipe failed.");
+					exit(EXIT_FAILURE);
+				}
 				piped = 1;
 				break;
 			case DUMP_CLEAR:	//set up i/o redirection
-			
+				
 				break;
 			case DUMP_APPEND:
-			
+				
 				break;
 			case TAKE:
-			
+				
 				break;
 			default:	//do nothing special
-			
+				
 				break;
 		}
 		//fork the process here, if piped then do recursive call with next+1 from child
 		pid_t cpid = fork();
-		if (cpid == 0) {	//child
-			if (piped) {	//recursive part
-				
-			}	
-			//exec call
-			
-		} else {		//parent
-			if (i == 0) {	//shell parent, so wait
-				
-			} else {	//not shell parent, so return
-				
-			}
+		
+		if (cpid < 0) {
+			perror("fork failed");
+			exit(EXIT_FAILURE);
 		}
 		
-	} else 
+		if (cpid == 0) {	//child:
+			if (i != 0 ){
+				close(npipe[1]);
+				dup2(npipe[0],0);
+			} else {
+				
+			}
+			if (piped) {	//recursive part
+				execute_command(next+1);	//take care of the next piped command
+			}	
+			execve(com, c_argv, c_envp);	//now execute the command
+		} else {
+			if (piped)	//parent:
+				close(npipe[0]);	//parent closes the read end
+			if (i == 0) {		//shell parent, so wait
+				if (wait(NULL) == -1) {
+					perror("wait() error");
+				}
+			} else {		//not shell parent
+				if (piped)
+					dup2(npipe[1], 1);	//parent copies the write end into its STDOUT
+			}
+			return;
+		}
+		
+	} else {
 		printf("Command not found!\n");
+	}
 }
 
 /** Execute a command string with piping and redirection **/
@@ -452,37 +474,33 @@ int is_builtin()
 		show_help();
 		return 1;
 	} else if (strcmp("cd", command_tokens[0]) == 0) {
-		if (num_tokens < 2) {
+		if (num_tokens < 2)
 			change_directory(NULL);
-		} else  if (num_tokens < 3) {
+		else if (num_tokens < 3)
 			change_directory(command_tokens[1]);
-		} else {
+		else
 			printf("Invalid number of arguments passed to built-in cd");
-		}
 		return 1;
 	} else if (strcmp("env", command_tokens[0]) == 0) {
 		print_environment();
 		return 1;
 	} else if (strcmp("set", command_tokens[0]) == 0) {
-		if (num_tokens == 3){
+		if (num_tokens == 3)
 			set_env_variable(command_tokens[1], command_tokens[2]);
-		} else {
+		else
 			printf("Invalid number of arguments passed to built-in set\n");
-		}
 		return 1;
 	} else if (strcmp("unset", command_tokens[0]) == 0) {
-		if (num_tokens == 2){
+		if (num_tokens == 2)
 			unset_env_variable(command_tokens[1]);
-		} else {
+		else 
 			printf("Invalid number of arguments passed to built-in unset\n");
-		}
 		return 1;
 	} else if (strcmp("install", command_tokens[0]) == 0) {
-		if (num_tokens == 3){
+		if (num_tokens == 3)
 			install(command_tokens[1], command_tokens[2]);
-		} else {
+		else
 			printf("Invalid number of arguments passed to built-in install\n");
-		}
 		return 1;
 	}
 	return 0;
@@ -513,7 +531,7 @@ int main(void)
 		clear_command();
 	}
 	*/
-	strcpy(command_line, "cat file");
+	strcpy(command_line, "cat echoes.txt | wc -l");
 	
 	tokenize_command();
 	
@@ -524,44 +542,8 @@ int main(void)
 	}
 	printf("End of tokens array\n\n");
 	
-	execute_command();	
+	execute_command_chain();
 	
 	printf("\n");	
 	return 0;
 }
-
-
-/**
-int dump;	//what did the last command do? pipe or redirect?
-	
-	for (i=0; i<num_tokens; ) {
-		j = i;
-		printf("Start: i = %d, j = %d\n", i, j);
-		//printf("checking...%s\n", command_tokens[j]);
-		int decide = is_pipe_or_arrow(command_tokens[j]);
-		while (1) {
-			//printf("j in loop = %d\n", j);
-			if ((decide != 0) || j == num_tokens-1 ) //break if delimiter found or this is the last token
-				break;
-			++j;
-			decide = is_pipe_or_arrow(command_tokens[j]);
-			//printf("j in loop after check= %d\n", j);
-		}
-		int k;
-		//printf("updated j = %d\n", j);
-		/*if (j == num_tokens)
-			--j;
-		printf("DO HERE: i = %d, j = %d\n", i, j);	//business end: [i, j) is the part which needs to be forked; j decides what to do about i/o;
-								//if i==j then it's use last j to decide, pipe implies fork, other implies dump 
-		for (k=i; k<=j; k++)
-				printf("%s, ", command_tokens[k]);
-		printf("\n");
-		/* main part */
-		
-		
-		
-		/* end of main part 
-		i = j+1;
-		printf("End: i = %d, j = %d\n\n", i, j);
-	}
-**/

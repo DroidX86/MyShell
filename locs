@@ -7,4 +7,5 @@ cat:/bin/cat
 cp:/bin/cp
 rm:/bin/rm
 mv:/bin/mv
+wc:/usr/bin/wc
 envtest:/home/rounak/Dropbox/Current Sem/Operating Systems/Lab/Assignment1/MyShell/envtest
