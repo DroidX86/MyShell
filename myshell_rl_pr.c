@@ -213,7 +213,7 @@ void init()
 	
 	num_progs = 0;
 	int i;
-	for(i=0; i<10; i++){
+	for(i=0; i<MAX_PROGS; i++){
 		programs[i] = (char*)malloc(MAX_PROG_NAME);
 		prog_locs[i] = (char*)malloc(MAX_PROG_LOC);
 	}
@@ -419,26 +419,20 @@ void execute_command(int i)
 		}
 		
 		if (cpid == 0) {	//child:
-			if (i != 0 ){
+			if (piped) {	//recursive part
 				close(npipe[1]);
 				dup2(npipe[0],0);
-			} else {
-				
-			}
-			if (piped) {	//recursive part
 				execute_command(next+1);	//take care of the next piped command
 			}	
 			execve(com, c_argv, c_envp);	//now execute the command
 		} else {
-			if (piped)	//parent:
-				close(npipe[0]);	//parent closes the read end
+			close(npipe[0]);
 			if (i == 0) {		//shell parent, so wait
 				if (wait(NULL) == -1) {
 					perror("wait() error");
 				}
 			} else {		//not shell parent
-				if (piped)
-					dup2(npipe[1], 1);	//parent copies the write end into its STDOUT
+				dup2(npipe[1], 1);
 			}
 			return;
 		}
@@ -519,6 +513,7 @@ int main(void)
 		strcpy(command_line, readline(""));
 		
 		if (strcmp(command_line, "")==0)
+
 			continue;
 		
 		if (*command_line && command_line)
@@ -531,7 +526,7 @@ int main(void)
 		clear_command();
 	}
 	*/
-	strcpy(command_line, "cat echoes.txt | wc -l");
+	strcpy(command_line, "cat echoes.txt");
 	
 	tokenize_command();
 	
@@ -542,6 +537,7 @@ int main(void)
 	}
 	printf("End of tokens array\n\n");
 	
+	//execute_single_command();
 	execute_command_chain();
 	
 	printf("\n");	
