@@ -1,6 +1,6 @@
-ls:/home/rounak/Dropbox/Current Sem/Operating Systems/Lab/Assignment1/MyShell/ls
-pwd:/home/rounak/Dropbox/Current Sem/Operating Systems/Lab/Assignment1/MyShell/pwd
-echo:/home/rounak/Dropbox/Current Sem/Operating Systems/Lab/Assignment1/MyShell/echo
+ls:/home/rounak/Dropbox/Current Sem/Operating Systems/Lab/MyShell/ls
+pwd:/home/rounak/Dropbox/Current Sem/Operating Systems/Lab/MyShell/pwd
+echo:/home/rounak/Dropbox/Current Sem/Operating Systems/Lab/MyShell/echo
 clear:/usr/bin/clear
 reset:/usr/bin/reset
 cat:/bin/cat
@@ -8,4 +8,4 @@ cp:/bin/cp
 rm:/bin/rm
 mv:/bin/mv
 wc:/usr/bin/wc
-envtest:/home/rounak/Dropbox/Current Sem/Operating Systems/Lab/Assignment1/MyShell/envtest
+envtest:/home/rounak/Dropbox/Current Sem/Operating Systems/Lab/MyShell/envtest

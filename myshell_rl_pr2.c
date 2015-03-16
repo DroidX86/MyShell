@@ -377,7 +377,7 @@ void execute_command_chain()
 	}
 	c_envp[j] = NULL;
 	
-	int to_pipe, from_pipe, piped, child_num = 0;
+	int to_pipe, from_pipe, numcom=1, child_num = 0;
 	int oldpipe[2], newpipe[2];
 	i=0;
 	
@@ -392,73 +392,105 @@ void execute_command_chain()
 		decide = is_pipe_or_arrow(command_tokens[next]);
 	}
 	
-	if (decide == PIPE){
+	if (decide == PIPE) {
 		to_pipe = 1;
-		piped = 1;
-	} else {
-		to_pipe = 0;
-		piped = 0;				
+		numcom++;
 	}
+	else{
+		to_pipe = 0;
+	}
+		
 	from_pipe = 0;	//first command doesn't come from a pipe
+	
 	do {
+		printf("\nStart of shell loop:\n");
+		printf("to_pipe: %d, from_pipe: %d, numcom: %d\n", to_pipe, from_pipe, numcom);
+		printf("i: %d, next: %d\n", i, next);
 		if(loc_index == -1) {
 			printf("Command not found");
 			exit(EXIT_FAILURE);
 		}
-		//set up argv for this command, increment i to next+1
+		//set up argv for this command
 		j=1,k = i+1;
+		if (next == num_tokens-1)
+			++next;
+		loc_index = is_installed(i);
 		for (; k<next; k++, j++) {
 			c_argv[j] = command_tokens[k];
 		}
 		char* com = prog_locs[loc_index];
 		c_argv[0] = com;
 		c_argv[j] = NULL;
-		i = next+1;
 		
 		//take care of the pipes
-		oldpipe[0] = newpipe[0];
+		oldpipe[0] = newpipe[0];	//save the pipe of the last iteration in oldpipe
 		oldpipe[1] = newpipe[1];
-		if (to_pipe)
+		if (to_pipe)			//create a new pipe if needed
 			if(pipe(newpipe) == -1){
 				perror("Pipe error");
 				exit(EXIT_FAILURE);
 			}
 		
+		printf("<-%d==%d<-\n",oldpipe[0], oldpipe[1]);
+		printf("<-%d==%d<-\n",newpipe[0], newpipe[1]);
 		//fork here
 		pid_t cpid = fork();
+		numcom--;
 		if (cpid < 0) {
 			perror("fork failed.");
 			exit(EXIT_FAILURE);
 		}
 		
 		if (cpid == 0) {	//child
-			//if child comes from a pipe, use oldpipe for input
+			//handle the input side
 			if (from_pipe){
+			//if child comes from a pipe, use oldpipe for input
 				
+			} else if (decide == TAKE) {
+			//use next token as file for input
+				
+			} else {
+			//use stdin
+			
 			}
 				
-			//if child is piped then use newpipe for output
+			//handle the output side
 			if (to_pipe) {
+			//if child comes from a pipe, use oldpipe for input
+				
+			} else if (decide == DUMP_CLEAR) {
+			//use next token as file for output 
+				
+			} else if (decide == DUMP_APPEND) {
+			//use next token as file for output 
+				
+			} else {
+			//use stdout
 				
 			}
 			
-			//if child is not piped then use decide to setup i/o redirection			
-			//TODO:add i/o redirection code
-			switch(decide){
-				case DUMP_CLEAR:
-					break;
-				case DUMP_APPEND:
-					break;
-				case TAKE:
-					break;
-				default:
-			}
 			//execute the process
+			int l=0;
+			printf("******argv:*******\n");
+			while(c_argv[l]) {
+				printf("%s\n", c_argv[l]);
+				l++;
+			}
+			printf("******envp:*******\n");
+			while(c_envp[l]) {
+				printf("%s\n", c_envp[l]);
+				l++;
+			}
+			
 			//XXX: should i close both ends of oldpipe here just in case?
 			execve(com, c_argv, c_envp);
 			perror("execve error");
 		} else {		//parent
+			child_num++;
+			if (!numcom)
+				break;
 			//decide flags for next loop here
+			i = next+1;
 			from_pipe = to_pipe;
 			++next;			//next is now the command
 			decide = is_pipe_or_arrow(command_tokens[next]);
@@ -471,16 +503,17 @@ void execute_command_chain()
 			
 			if (decide == PIPE){
 				to_pipe = 1;
-				piped = 1;
+				numcom++;
 			} else {
 				to_pipe = 0;
-				piped = 0;				
 			}
 			//parent continues with loop, next iteration would use decide, to_pipe, old_pipe
+			printf("End of shell loop:\n");
+			printf("to_pipe: %d, from_pipe: %d, numcom: %d\n", to_pipe, from_pipe, numcom);
+			printf("i: %d, next: %d\n", i, next);
 		}
-		
-		child_num++;
-	} while (piped);
+	} while (numcom);
+	printf("\n\nNumber of children: %d\n", child_num);
 	
 	for (j=0; j<child_num; j++)
 		wait(NULL);
