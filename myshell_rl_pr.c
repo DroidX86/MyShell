@@ -365,7 +365,7 @@ int is_pipe_or_arrow(char* token)
 
 /** Start execution of a command located at command_tokens[i] **/
 //XXX: Incredibly dangerous function
-void execute_command(int i)
+void execute_command(int i, int waspiped, int motherpipe[2])
 {
 	int loc_index = is_installed(i),next;
 	next = i;
@@ -419,22 +419,9 @@ void execute_command(int i)
 		}
 		
 		if (cpid == 0) {	//child:
-			if (piped) {	//recursive part
-				close(npipe[1]);
-				dup2(npipe[0],0);
-				execute_command(next+1);	//take care of the next piped command
-			}	
-			execve(com, c_argv, c_envp);	//now execute the command
-		} else {
-			close(npipe[0]);
-			if (i == 0) {		//shell parent, so wait
-				if (wait(NULL) == -1) {
-					perror("wait() error");
-				}
-			} else {		//not shell parent
-				dup2(npipe[1], 1);
-			}
-			return;
+			
+		} else {		//parent:
+			
 		}
 		
 	} else {
