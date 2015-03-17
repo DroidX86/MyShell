@@ -11,3 +11,5 @@ wc:/usr/bin/wc
 envtest:/home/rounak/Dropbox/Current Sem/Operating Systems/Lab/MyShell/envtest
 true:/bin/true
 false:/bin/false
+awk:/bin/awk
+tr:/usr/bin/tr

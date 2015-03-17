@@ -3,6 +3,7 @@
 #include<stdlib.h>
 #include<signal.h>
 #include<unistd.h>
+#include<time.h>
 #include<sys/types.h>
 #include<sys/wait.h>
 #include<readline/readline.h>
@@ -22,6 +23,8 @@
 #define PIPE 36
 #define DUMP_APPEND 49
 #define TAKE 69
+
+#define DELAY 5000000
 
 //global variables
 char command_line[MAX_COMMAND_LEN];
@@ -387,9 +390,9 @@ void execute_command_chain()
 	from_pipe = 0;	//first command doesn't come from a pipe
 	
 	do {
-		printf("\nStart of shell loop:\n");
-		printf("to_pipe: %d, from_pipe: %d, numcom: %d\n", to_pipe, from_pipe, numcom);
-		printf("i: %d, next: %d\n", i, next);
+		//printf("\nStart of shell loop:\n");
+		//printf("to_pipe: %d, from_pipe: %d, numcom: %d\n", to_pipe, from_pipe, numcom);
+		//printf("i: %d, next: %d\n", i, next);
 		if(loc_index == -1) {
 			printf("Command not found");
 			exit(EXIT_FAILURE);
@@ -406,8 +409,8 @@ void execute_command_chain()
 		c_argv[0] = com;
 		c_argv[j] = NULL;
 		
-		//take care of the pipes
-		oldpipe[0] = newpipe[0];	//save the pipe of the last iteration in oldpipe
+		//take care of the pipes, save the pipe of the last iteration in oldpipe
+		oldpipe[0] = newpipe[0];
 		oldpipe[1] = newpipe[1];
 		if (to_pipe)			//create a new pipe if needed
 			if(pipe(newpipe) == -1){
@@ -415,8 +418,8 @@ void execute_command_chain()
 				exit(EXIT_FAILURE);
 			}
 		
-		printf("old: <-%d==%d<-\n",oldpipe[0], oldpipe[1]);
-		printf("new: <-%d==%d<-\n",newpipe[0], newpipe[1]);
+		//printf("old: <-%d==%d<-\n",oldpipe[0], oldpipe[1]);
+		//printf("new: <-%d==%d<-\n",newpipe[0], newpipe[1]);
 		//fork here
 		pid_t cpid = fork();
 		numcom--;
@@ -430,10 +433,14 @@ void execute_command_chain()
 			if (from_pipe){
 			//if child comes from a pipe, use oldpipe for input
 				printf("%s is gonna pipe its input from %d=%d\n", com, oldpipe[0], oldpipe[1]);
-				dup2(oldpipe[0], 0);
+				int x = dup2(oldpipe[0], STDIN_FILENO);
+				fprintf(stderr, "%s::x=%d\n", com, x);
+				if (x == -1) perror("");
 				close(oldpipe[1]);
-				close(newpipe[0]);
-				close(newpipe[1]);
+				if (!to_pipe){
+					close(newpipe[0]);
+					close(newpipe[1]);
+				}
 			} else if (decide == TAKE) {
 			//use next token as file for input
 				
@@ -446,7 +453,9 @@ void execute_command_chain()
 			if (to_pipe) {
 			//if child comes from a pipe, use newpipe for output
 				printf("%s is gonna pipe its output to %d=%d\n", com, newpipe[0], newpipe[1]);
-				dup2(newpipe[1], 1);
+				int x = dup2(newpipe[1], STDOUT_FILENO);
+				fprintf(stderr, "%s::x=%d\n", com, x);
+				if (x == -1) perror("");
 				close(newpipe[0]);
 				close(oldpipe[0]);
 				close(oldpipe[1]);
@@ -462,7 +471,7 @@ void execute_command_chain()
 			}
 			
 			//execute the process
-			int l=0;
+			/*int l=0;
 			printf("******argv:*******\n");
 			while(c_argv[l]) {
 				printf("%s\n", c_argv[l]);
@@ -472,11 +481,18 @@ void execute_command_chain()
 			while(c_envp[l]) {
 				printf("%s\n", c_envp[l]);
 				l++;
-			}
+			}*/
 			
-			//XXX: should i close both ends of oldpipe here just in case?
+			//close all the dam fds?
+			/*close(newpipe[1]);
+			close(newpipe[0]);
+			close(oldpipe[0]);
+			close(oldpipe[1]);*/
+			
+			//actually exec it
 			execve(com, c_argv, c_envp);
 			perror("execve error");
+			
 		} else {		//parent
 			child_num++;
 			if (!numcom)
@@ -500,9 +516,9 @@ void execute_command_chain()
 				to_pipe = 0;
 			}
 			//parent continues with loop, next iteration would use decide, to_pipe, old_pipe
-			printf("End of shell loop:\n");
-			printf("to_pipe: %d, from_pipe: %d, numcom: %d\n", to_pipe, from_pipe, numcom);
-			printf("i: %d, next: %d\n", i, next);
+			//printf("End of shell loop:\n");
+			//printf("to_pipe: %d, from_pipe: %d, numcom: %d\n", to_pipe, from_pipe, numcom);
+			//printf("i: %d, next: %d\n", i, next);
 		}
 	} while (numcom);
 	printf("\n\nNumber of children: %d\n", child_num);
@@ -510,6 +526,11 @@ void execute_command_chain()
 	int status;
 	for (j=0; j<child_num; j++)
 		waitpid(-1, &status, WNOHANG);
+	
+	struct timespec hack_delay;
+	hack_delay.tv_sec = 0;
+	hack_delay.tv_nsec = DELAY;
+	nanosleep(&hack_delay, NULL);
 }
 
 /** Search command_name against list of built ins **/
@@ -566,7 +587,6 @@ int main(void)
 		strcpy(command_line, readline(""));
 		
 		if (strcmp(command_line, "")==0)
-
 			continue;
 		
 		if (*command_line && command_line)
@@ -579,7 +599,7 @@ int main(void)
 		clear_command();
 	}
 	*/
-	strcpy(command_line, "cat echoes.txt | wc -l");
+	strcpy(command_line, "ls -l | tr [a-z] [A-Z]");
 	
 	tokenize_command();
 	
