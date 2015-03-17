@@ -268,22 +268,6 @@ void tokenize_command()
 	}
 }
 
-/** Read a line of command (NOT USED)**/
-void get_line()
-{
-	clear_command();
-	int chars = 1;
-	command_line[0] = first_char;
-	char input_char = getchar();
-	while ( (input_char != '\n') && (chars < MAX_COMMAND_LEN) ){
-		command_line[chars] = input_char;
-		chars++;
-		input_char = getchar();
-	}
-	command_line[chars] = 0;
-	tokenize_command();
-}
-
 /** Search command_name against list of installed programs in locs **/
 int is_installed(int index)
 {
@@ -431,8 +415,8 @@ void execute_command_chain()
 				exit(EXIT_FAILURE);
 			}
 		
-		printf("<-%d==%d<-\n",oldpipe[0], oldpipe[1]);
-		printf("<-%d==%d<-\n",newpipe[0], newpipe[1]);
+		printf("old: <-%d==%d<-\n",oldpipe[0], oldpipe[1]);
+		printf("new: <-%d==%d<-\n",newpipe[0], newpipe[1]);
 		//fork here
 		pid_t cpid = fork();
 		numcom--;
@@ -445,19 +429,27 @@ void execute_command_chain()
 			//handle the input side
 			if (from_pipe){
 			//if child comes from a pipe, use oldpipe for input
-				
+				printf("%s is gonna pipe its input from %d=%d\n", com, oldpipe[0], oldpipe[1]);
+				dup2(oldpipe[0], 0);
+				close(oldpipe[1]);
+				close(newpipe[0]);
+				close(newpipe[1]);
 			} else if (decide == TAKE) {
 			//use next token as file for input
 				
 			} else {
 			//use stdin
-			
+				
 			}
 				
 			//handle the output side
 			if (to_pipe) {
-			//if child comes from a pipe, use oldpipe for input
-				
+			//if child comes from a pipe, use newpipe for output
+				printf("%s is gonna pipe its output to %d=%d\n", com, newpipe[0], newpipe[1]);
+				dup2(newpipe[1], 1);
+				close(newpipe[0]);
+				close(oldpipe[0]);
+				close(oldpipe[1]);
 			} else if (decide == DUMP_CLEAR) {
 			//use next token as file for output 
 				
@@ -515,8 +507,9 @@ void execute_command_chain()
 	} while (numcom);
 	printf("\n\nNumber of children: %d\n", child_num);
 	
+	int status;
 	for (j=0; j<child_num; j++)
-		wait(NULL);
+		waitpid(-1, &status, WNOHANG);
 }
 
 /** Search command_name against list of built ins **/
@@ -586,7 +579,7 @@ int main(void)
 		clear_command();
 	}
 	*/
-	strcpy(command_line, "cat echoes.txt");
+	strcpy(command_line, "cat echoes.txt | wc -l");
 	
 	tokenize_command();
 	
