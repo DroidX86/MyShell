@@ -6,6 +6,8 @@
 #include<time.h>
 #include<sys/types.h>
 #include<sys/wait.h>
+#include<sys/stat.h>
+#include<fcntl.h>
 #include<readline/readline.h>
 #include<readline/history.h>
 
@@ -38,14 +40,13 @@ int num_progs;
 char* c_argv[MAX_ARGS];
 char* c_envp[MAX_ENV_VARS];
 
-char first_char = '\0';
-
 
 //environment variables
 char* env_variables[MAX_ENV_VARS];
 char* env_var_values[MAX_ENV_VARS];
 int env_var_count;
 char* prompt_string;	//buffer for regular use in prompt subroutine
+char* pwd;		//buffer for regular use in redirection
 
 /** Update the prompt string if set has been used **/
 void update_prompt_string()
@@ -54,6 +55,19 @@ void update_prompt_string()
 	for(; i<env_var_count; i++){
 		if (strcmp(env_variables[i], "PS") == 0){
 			strcpy(prompt_string, env_var_values[i]);
+			return;
+		}
+	}
+	perror("PS not found in list of environment variables");
+}
+
+/** Update the pwd if set has been used **/
+void update_pwd_string()
+{
+	int i=0;
+	for(; i<env_var_count; i++){
+		if (strcmp(env_variables[i], "PWD") == 0){
+			strcpy(pwd, env_var_values[i]);
 			return;
 		}
 	}
@@ -91,6 +105,7 @@ void change_directory(char* wheretogo)
 		if (strcmp(env_variables[i], "PWD") == 0)
 			getcwd(env_var_values[i], ENV_VAR_SIZE);
 	}
+	update_pwd_string();
 }
 
 void print_environment()
@@ -115,6 +130,7 @@ void set_env_variable(char* key, char* value)
 				env_var_values[i] = (char*)malloc(ENV_VAR_SIZE);
 				strcpy(env_var_values[i], value);
 				update_prompt_string();
+				update_pwd_string();
 				return;
 			}
 		}
@@ -195,6 +211,7 @@ void set_default_env_vars()
 	strcpy(env_variables[2], "PWD");
 	env_var_values[2] = (char*)malloc(ENV_VAR_SIZE);
 	getcwd(env_var_values[2], ENV_VAR_SIZE);
+	pwd = env_var_values[2];
 	
 	env_variables[3] = (char*)malloc(ENV_VAR_NMSIZE);
 	strcpy(env_variables[3], "TERM");
@@ -350,6 +367,45 @@ int is_pipe_or_arrow(char* token)
 		return 0;
 }
 
+/** open a token as a file for redirection, return a file descriptor **/
+int open_next_token(char *filename, int decide)
+{
+	char* filepath;
+	if (strchr(filename, '/')) {	//if the token contain a '/' treat it as a path
+		filepath = filename;
+	} else {	//else use relative addressing
+		strcpy(filepath, pwd);
+		strcat(filepath, "/");
+		strcat(filepath, filename);
+	}
+	int fd;
+	
+	fprintf(stderr,"filepath: %s\n", filepath);
+	
+	switch (decide) {
+		case TAKE:
+			fd = open(filepath, O_RDONLY);
+			break;
+		case DUMP_APPEND:
+			fd = open(filepath, O_WRONLY | O_APPEND);
+			break;
+		case DUMP_CLEAR:
+			fd = open(filepath, O_CREAT | O_WRONLY, S_IRUSR | S_IWUSR | S_IRGRP | S_IWGRP | S_IROTH);
+			break;
+		default:
+			fd = -1;
+	}
+	
+	if (fd == -1) {
+		perror("open failed");
+		exit(EXIT_FAILURE);
+	}
+	
+	fprintf(stderr,"fd: %d\n", fd);
+	
+	return fd;
+}
+
 /** multi child version of piping **/
 void execute_command_chain() 
 {
@@ -365,7 +421,7 @@ void execute_command_chain()
 	c_envp[j] = NULL;
 	
 	int to_pipe, from_pipe, numcom=1, child_num = 0;
-	int oldpipe[2], newpipe[2];
+	int oldpipe[2], newpipe[2], fdi, fdo;
 	i=0;
 	
 	//decide flags for the first command
@@ -388,6 +444,7 @@ void execute_command_chain()
 	}
 		
 	from_pipe = 0;	//first command doesn't come from a pipe
+	++next;
 	
 	do {
 		//printf("\nStart of shell loop:\n");
@@ -405,6 +462,8 @@ void execute_command_chain()
 		for (; k<next; k++, j++) {
 			c_argv[j] = command_tokens[k];
 		}
+		if (next == num_tokens)
+			--next;
 		char* com = prog_locs[loc_index];
 		c_argv[0] = com;
 		c_argv[j] = NULL;
@@ -433,41 +492,54 @@ void execute_command_chain()
 			if (from_pipe){
 			//if child comes from a pipe, use oldpipe for input
 				printf("%s is gonna pipe its input from %d=%d\n", com, oldpipe[0], oldpipe[1]);
-				int x = dup2(oldpipe[0], STDIN_FILENO);
-				fprintf(stderr, "%s::x=%d\n", com, x);
-				if (x == -1) perror("");
-				close(oldpipe[1]);
-				if (!to_pipe){
-					close(newpipe[0]);
-					close(newpipe[1]);
+				if (dup2(oldpipe[0], STDIN_FILENO) == -1 ) {
+					perror("dup2 error");
+					exit(EXIT_FAILURE);
 				}
 			} else if (decide == TAKE) {
 			//use next token as file for input
-				
+				printf("%s is gonna take its input from %s/%s\n", com, pwd, command_tokens[next]);
+				fdi = open_next_token(command_tokens[next], decide);
+				if (dup2(fdi, STDIN_FILENO) == -1) {
+					perror("dup2 error");
+					exit(EXIT_FAILURE);
+				}
+				close(fdi);
 			} else {
 			//use stdin
-				
+				printf("%s is gonna take its input from stdin/args\n", com);
 			}
 				
 			//handle the output side
 			if (to_pipe) {
 			//if child comes from a pipe, use newpipe for output
 				printf("%s is gonna pipe its output to %d=%d\n", com, newpipe[0], newpipe[1]);
-				int x = dup2(newpipe[1], STDOUT_FILENO);
-				fprintf(stderr, "%s::x=%d\n", com, x);
-				if (x == -1) perror("");
-				close(newpipe[0]);
-				close(oldpipe[0]);
-				close(oldpipe[1]);
+				if (dup2(newpipe[1], STDOUT_FILENO) == -1) {
+					perror("dup2 error");
+					exit(EXIT_FAILURE);
+				}
 			} else if (decide == DUMP_CLEAR) {
 			//use next token as file for output 
-				
+				printf("%s is gonna dump its output to %s/%s\n", com, pwd, command_tokens[next]);
+				printf("next token: %s\n", command_tokens[next]);
+				fdo = open_next_token(command_tokens[next], decide);
+				if (dup2(fdo, STDOUT_FILENO) == -1) {
+					perror("dup2 error");
+					exit(EXIT_FAILURE);
+				}
+				close(fdo);
 			} else if (decide == DUMP_APPEND) {
 			//use next token as file for output 
-				
+				printf("%s is gonna append its output to %s/%s\n", com, pwd, command_tokens[next]);
+				fdo = open_next_token(command_tokens[next], decide);
+				if (dup2(fdo, STDOUT_FILENO) == -1) {
+					perror("dup2 error");
+					exit(EXIT_FAILURE);
+				}
+				close(fdo);
 			} else {
 			//use stdout
-				
+				printf("%s is gonna use stdout for output\n", com);
 			}
 			
 			//execute the process
@@ -483,11 +555,11 @@ void execute_command_chain()
 				l++;
 			}*/
 			
-			//close all the dam fds?
-			/*close(newpipe[1]);
+			//close all the unused fds
 			close(newpipe[0]);
+			close(newpipe[1]);
 			close(oldpipe[0]);
-			close(oldpipe[1]);*/
+			close(oldpipe[1]);
 			
 			//actually exec it
 			execve(com, c_argv, c_envp);
@@ -515,6 +587,7 @@ void execute_command_chain()
 			} else {
 				to_pipe = 0;
 			}
+			++next;
 			//parent continues with loop, next iteration would use decide, to_pipe, old_pipe
 			//printf("End of shell loop:\n");
 			//printf("to_pipe: %d, from_pipe: %d, numcom: %d\n", to_pipe, from_pipe, numcom);
@@ -525,7 +598,7 @@ void execute_command_chain()
 	
 	int status;
 	for (j=0; j<child_num; j++)
-		waitpid(-1, &status, WNOHANG);
+		waitpid(-1, &status, 0);
 	
 	struct timespec hack_delay;
 	hack_delay.tv_sec = 0;
@@ -599,7 +672,7 @@ int main(void)
 		clear_command();
 	}
 	*/
-	strcpy(command_line, "ls -l | tr [a-z] [A-Z]");
+	strcpy(command_line, "ls -l > rtest.txt");
 	
 	tokenize_command();
 	
