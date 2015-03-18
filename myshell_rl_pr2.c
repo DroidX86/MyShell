@@ -347,12 +347,12 @@ void execute_single_command()
 		printf("Command not found!\n");
 }
 
-/** check if a command token is a pipe '|' or arrow '>', '<', '>>' etc. **/
+/** check if a command token is a pipe '|' or arrow '>', '<', '>>' **/
 //XXX: this stuff can be optimized
 int is_pipe_or_arrow(char* token)
 {
 	if (!token){
-		printf("NULL passed");
+		printf("NULL passed\n");
 		exit(EXIT_FAILURE);
 	}
 	if (strcmp(token, "|") == 0)
@@ -370,9 +370,9 @@ int is_pipe_or_arrow(char* token)
 /** open a token as a file for redirection, return a file descriptor **/
 int open_next_token(char *filename, int decide)
 {
-	char* filepath;
-	if (strchr(filename, '/')) {	//if the token contain a '/' treat it as a path
-		filepath = filename;
+	char* filepath = malloc(4096);
+	if (strchr(filename, '/')) {	//if the token contains a '/' treat it as a path
+		strcpy(filepath, filename);
 	} else {	//else use relative addressing
 		strcpy(filepath, pwd);
 		strcat(filepath, "/");
@@ -390,7 +390,7 @@ int open_next_token(char *filename, int decide)
 			fd = open(filepath, O_WRONLY | O_APPEND);
 			break;
 		case DUMP_CLEAR:
-			fd = open(filepath, O_CREAT | O_WRONLY, S_IRUSR | S_IWUSR | S_IRGRP | S_IWGRP | S_IROTH);
+			fd = open(filepath, O_CREAT | O_WRONLY | O_TRUNC, S_IRUSR | S_IWUSR | S_IRGRP | S_IWGRP | S_IROTH);
 			break;
 		default:
 			fd = -1;
@@ -444,12 +444,11 @@ void execute_command_chain()
 	}
 		
 	from_pipe = 0;	//first command doesn't come from a pipe
-	++next;
 	
 	do {
-		//printf("\nStart of shell loop:\n");
-		//printf("to_pipe: %d, from_pipe: %d, numcom: %d\n", to_pipe, from_pipe, numcom);
-		//printf("i: %d, next: %d\n", i, next);
+		printf("\nStart of shell loop:\n");
+		printf("to_pipe: %d, from_pipe: %d, numcom: %d\n", to_pipe, from_pipe, numcom);
+		printf("i: %d, next: %d\n", i, next);
 		if(loc_index == -1) {
 			printf("Command not found");
 			exit(EXIT_FAILURE);
@@ -462,8 +461,6 @@ void execute_command_chain()
 		for (; k<next; k++, j++) {
 			c_argv[j] = command_tokens[k];
 		}
-		if (next == num_tokens)
-			--next;
 		char* com = prog_locs[loc_index];
 		c_argv[0] = com;
 		c_argv[j] = NULL;
@@ -498,8 +495,9 @@ void execute_command_chain()
 				}
 			} else if (decide == TAKE) {
 			//use next token as file for input
-				printf("%s is gonna take its input from %s/%s\n", com, pwd, command_tokens[next]);
-				fdi = open_next_token(command_tokens[next], decide);
+				printf("%s is gonna take its input from %s/%s\n", com, pwd, command_tokens[next+1]);
+				fdi = open_next_token(command_tokens[next+1], decide);
+				printf("fdi:%d\n", fdi);
 				if (dup2(fdi, STDIN_FILENO) == -1) {
 					perror("dup2 error");
 					exit(EXIT_FAILURE);
@@ -520,9 +518,8 @@ void execute_command_chain()
 				}
 			} else if (decide == DUMP_CLEAR) {
 			//use next token as file for output 
-				printf("%s is gonna dump its output to %s/%s\n", com, pwd, command_tokens[next]);
-				printf("next token: %s\n", command_tokens[next]);
-				fdo = open_next_token(command_tokens[next], decide);
+				printf("%s is gonna dump its output to %s/%s\n", com, pwd, command_tokens[next+1]);
+				fdo = open_next_token(command_tokens[next+1], decide);
 				if (dup2(fdo, STDOUT_FILENO) == -1) {
 					perror("dup2 error");
 					exit(EXIT_FAILURE);
@@ -530,8 +527,8 @@ void execute_command_chain()
 				close(fdo);
 			} else if (decide == DUMP_APPEND) {
 			//use next token as file for output 
-				printf("%s is gonna append its output to %s/%s\n", com, pwd, command_tokens[next]);
-				fdo = open_next_token(command_tokens[next], decide);
+				printf("%s is gonna append its output to %s/%s\n", com, pwd, command_tokens[next+1]);
+				fdo = open_next_token(command_tokens[next+1], decide);
 				if (dup2(fdo, STDOUT_FILENO) == -1) {
 					perror("dup2 error");
 					exit(EXIT_FAILURE);
@@ -556,11 +553,14 @@ void execute_command_chain()
 			}*/
 			
 			//close all the unused fds
-			close(newpipe[0]);
-			close(newpipe[1]);
-			close(oldpipe[0]);
-			close(oldpipe[1]);
-			
+			if (to_pipe) {
+				close(newpipe[0]);
+				close(newpipe[1]);
+			}
+			if (from_pipe) {
+				close(oldpipe[0]);
+				close(oldpipe[1]);
+			}
 			//actually exec it
 			execve(com, c_argv, c_envp);
 			perror("execve error");
@@ -587,7 +587,6 @@ void execute_command_chain()
 			} else {
 				to_pipe = 0;
 			}
-			++next;
 			//parent continues with loop, next iteration would use decide, to_pipe, old_pipe
 			//printf("End of shell loop:\n");
 			//printf("to_pipe: %d, from_pipe: %d, numcom: %d\n", to_pipe, from_pipe, numcom);
@@ -598,7 +597,7 @@ void execute_command_chain()
 	
 	int status;
 	for (j=0; j<child_num; j++)
-		waitpid(-1, &status, 0);
+		waitpid(-1, &status, WNOHANG);
 	
 	struct timespec hack_delay;
 	hack_delay.tv_sec = 0;
@@ -672,7 +671,8 @@ int main(void)
 		clear_command();
 	}
 	*/
-	strcpy(command_line, "ls -l > rtest.txt");
+	strcpy(command_line, "cat < echoes.txt");
+	//strcpy(command_line, "ls -l");
 	
 	tokenize_command();
 	
