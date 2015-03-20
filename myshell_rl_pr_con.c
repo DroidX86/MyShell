@@ -277,12 +277,12 @@ void handle_signal(int signo)
 /** Clear command string and tokens **/
 void clear_command()
 {
-	command_line[0] = 0;
+	//command_line[0] = 0;
 	//free(command_line);
 	int i;
 	for(i=0; i<num_tokens; i++){
 		//free(command_tokens[i]);
-		command_tokens[i] = NULL;
+		//command_tokens[i] = NULL;
 	}
 	num_tokens = 0;
 }
@@ -442,6 +442,7 @@ void execute_command_chain()
 	int numcom = 1, child_num = 0; //number of commands seen so far, and the number of children forked so far
 	int to_pipe = 0, from_pipe, success = 0, failure = 0;
 	int oldpipe[2], newpipe[2], fdi, fdo;
+	int was_piped = 0, was_redirected = 0;
 	
 	int loc_index, next;
 	i=0;
@@ -459,6 +460,7 @@ void execute_command_chain()
 	switch (decide) {
 		case PIPE:
 			to_pipe = 1;
+			was_piped = 1;
 			numcom++;
 			break;
 		case RUN_SUCCESS:
@@ -477,13 +479,13 @@ void execute_command_chain()
 	from_pipe = 0;	//first command doesn't come from a pipe
 	
 	do {
-		printf("\nStart of shell loop:\n");
-		printf("to_pipe: %d, from_pipe: %d, numcom: %d, success: %d, failure: %d\n", to_pipe, from_pipe, numcom, success, failure);
-		printf("i: %d, next: %d\n", i, next);
+		//printf("\nStart of shell loop:\n");
+		//printf("to_pipe: %d, from_pipe: %d, numcom: %d, success: %d, failure: %d\n", to_pipe, from_pipe, numcom, success, failure);
+		//printf("i: %d, next: %d\n", i, next);
 		
 		loc_index = is_installed(i);
 		if(loc_index == -1) {
-			printf("Command not found");
+			fprintf(stderr, "Command not found\n");
 			return;
 		}
 		
@@ -522,14 +524,16 @@ void execute_command_chain()
 			//handle the input side
 			if (from_pipe){
 			//if child comes from a pipe, use oldpipe for input
-				printf("%s is gonna pipe its input from %d=%d\n", com, oldpipe[0], oldpipe[1]);
+				//printf("%s is gonna pipe its input from %d=%d\n", com, oldpipe[0], oldpipe[1]);
+				was_redirected = 1;
 				if (dup2(oldpipe[0], STDIN_FILENO) == -1 ) {
 					perror("dup2 error");
 					exit(EXIT_FAILURE);
 				}
 			} else if (decide == TAKE) {
 			//use next token as file for input
-				printf("%s is gonna take its input from %s/%s\n", com, pwd, command_tokens[next+1]);
+				//printf("%s is gonna take its input from %s/%s\n", com, pwd, command_tokens[next+1]);
+				was_redirected = 1;
 				fdi = open_next_token(command_tokens[next+1], decide);
 				if (dup2(fdi, STDIN_FILENO) == -1) {
 					perror("dup2 error");
@@ -538,20 +542,21 @@ void execute_command_chain()
 				close(fdi);
 			} else {
 			//use stdin
-				printf("%s is gonna take its input from stdin/args\n", com);
+				//printf("%s is gonna take its input from stdin/args\n", com);
 			}
 				
 			//handle the output side
 			if (to_pipe) {
 			//if child comes from a pipe, use newpipe for output
-				printf("%s is gonna pipe its output to %d=%d\n", com, newpipe[0], newpipe[1]);
+				//printf("%s is gonna pipe its output to %d=%d\n", com, newpipe[0], newpipe[1]);
 				if (dup2(newpipe[1], STDOUT_FILENO) == -1) {
 					perror("dup2 error");
 					exit(EXIT_FAILURE);
 				}
 			} else if (decide == DUMP_CLEAR) {
 			//use next token as file for output 
-				printf("%s is gonna dump its output to %s/%s\n", com, pwd, command_tokens[next+1]);
+				//printf("%s is gonna dump its output to %s/%s\n", com, pwd, command_tokens[next+1]);
+				was_redirected = 1;
 				fdo = open_next_token(command_tokens[next+1], decide);
 				if (dup2(fdo, STDOUT_FILENO) == -1) {
 					perror("dup2 error");
@@ -560,7 +565,8 @@ void execute_command_chain()
 				close(fdo);
 			} else if (decide == DUMP_APPEND) {
 			//use next token as file for output 
-				printf("%s is gonna append its output to %s/%s\n", com, pwd, command_tokens[next+1]);
+				//printf("%s is gonna append its output to %s/%s\n", com, pwd, command_tokens[next+1]);
+				was_redirected = 1;
 				fdo = open_next_token(command_tokens[next+1], decide);
 				if (dup2(fdo, STDOUT_FILENO) == -1) {
 					perror("dup2 error");
@@ -569,7 +575,7 @@ void execute_command_chain()
 				close(fdo);
 			} else {
 			//use stdout
-				printf("%s is gonna use stdout for output\n", com);
+				//printf("%s is gonna use stdout for output\n", com);
 			}
 			
 			//execute the process
@@ -596,7 +602,7 @@ void execute_command_chain()
 			}
 			//actually exec it
 			execve(com, c_argv, c_envp);
-			perror("execve error");
+			perror("Nobody expects the spanish inquisition");
 			exit(EXIT_FAILURE);
 			
 		} else {		//parent
@@ -644,6 +650,7 @@ void execute_command_chain()
 			switch (decide) {
 				case PIPE:
 					to_pipe = 1;
+					was_piped = 1;
 					numcom++;
 					break;
 				case RUN_SUCCESS:
@@ -666,7 +673,7 @@ void execute_command_chain()
 		
 	} while (numcom);
 	
-	printf("\n\nNumber of children: %d\n", child_num);
+	//printf("\n\nNumber of children: %d\n", child_num);
 	
 	int status;
 	if (child_num){
@@ -679,6 +686,19 @@ void execute_command_chain()
 				perror("wait() failed");
 				exit(EXIT_FAILURE);
 			}
+	}
+	
+	//close all file descriptors used in this invocation
+	if (was_piped) {
+		close(oldpipe[0]);
+		close(newpipe[0]);
+		close(oldpipe[1]);
+		close(newpipe[1]);
+	
+	}
+	if (was_redirected){
+		close(fdi);
+		close(fdo);
 	}
 	
 	struct timespec hack_delay;
@@ -734,7 +754,6 @@ int is_builtin()
 int main(void)
 {
 	init();
-	/*
 	while (1) {		
 		signal(SIGINT, handle_signal);
 		prompt();
@@ -751,9 +770,8 @@ int main(void)
 			execute_command_chain();
 		}
 		clear_command();
-	}*/
-	strcpy(command_line, "cat echoes.txt | tr [a-z] [A-Z] > echoes_1.txt");
-	//strcpy(command_line, "ls -l");
+	}
+	strcpy(command_line, "cat echoes.txt | wc -l");
 	
 	tokenize_command();
 	
@@ -768,6 +786,6 @@ int main(void)
 	execute_command_chain();
 	
 	printf("\n");
-	show_help();
+	//show_help();
 	return 0;
 }
