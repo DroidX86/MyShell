@@ -108,6 +108,7 @@ void change_directory(char* wheretogo)
 			getcwd(env_var_values[i], ENV_VAR_SIZE);
 	}
 	update_pwd_string();
+	strcpy(prompt_string, pwd);
 }
 
 void print_environment()
@@ -129,7 +130,7 @@ void set_env_variable(char* key, char* value)
 			//printf("ev: %s\n", env_variables[i]);
 			if ( strcmp(key, env_variables[i]) == 0) {
 				if ( (strcmp(key, "PS") == 0) && (strcmp(value, "pwd") == 0) ) {
-					prompt_string = pwd;
+					strcpy(prompt_string, pwd);
 					return;
 				}
 				free(env_var_values[i]);
