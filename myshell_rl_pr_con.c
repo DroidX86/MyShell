@@ -771,21 +771,5 @@ int main(void)
 		}
 		clear_command();
 	}
-	strcpy(command_line, "cat echoes.txt | wc -l");
-	
-	tokenize_command();
-	
-	int i;
-	printf("Tokens array: \n");
-	for (i=0; i< num_tokens; i++) {
-		printf("%d = %s\n", i, command_tokens[i]);
-	}
-	printf("End of tokens array\n\n");
-	
-	//execute_single_command();
-	execute_command_chain();
-	
-	printf("\n");
-	//show_help();
 	return 0;
 }
