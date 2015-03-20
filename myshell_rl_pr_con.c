@@ -430,7 +430,7 @@ void execute_command_chain()
 	i=0;
 	
 	//decide flags for the first command
-	int loc_index = is_installed(i),next;
+	int loc_index, next;
 	next = i;
 	int decide = is_delimiter(command_tokens[next]);
 	while (1) {
@@ -465,16 +465,16 @@ void execute_command_chain()
 		printf("to_pipe: %d, from_pipe: %d, numcom: %d, success: %d, failure: %d\n", to_pipe, from_pipe, numcom, success, failure);
 		printf("i: %d, next: %d\n", i, next);
 		
+		loc_index = is_installed(i);
 		if(loc_index == -1) {
 			printf("Command not found");
-			exit(EXIT_FAILURE);
+			return;
 		}
 		
 		//set up argv for this command
 		j=1,k = i+1;
 		if (next == num_tokens-1)
 			++next;
-		loc_index = is_installed(i);
 		for (; k<next; k++, j++) {
 			c_argv[j] = command_tokens[k];
 		}
