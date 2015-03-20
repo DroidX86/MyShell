@@ -128,6 +128,10 @@ void set_env_variable(char* key, char* value)
 		if(env_variables[i]) {
 			//printf("ev: %s\n", env_variables[i]);
 			if ( strcmp(key, env_variables[i]) == 0) {
+				if ( (strcmp(key, "PS") == 0) && (strcmp(value, "pwd") == 0) ) {
+					prompt_string = pwd;
+					return;
+				}
 				free(env_var_values[i]);
 				env_var_values[i] = (char*)malloc(ENV_VAR_SIZE);
 				strcpy(env_var_values[i], value);
@@ -209,7 +213,7 @@ void set_default_env_vars()
 	env_variables[0] = (char*)malloc(ENV_VAR_NMSIZE);
 	strcpy(env_variables[0], "PS");
 	env_var_values[0] = (char*)malloc(ENV_VAR_SIZE);
-	strcpy(env_var_values[0], "myshell>");
+	strcpy(env_var_values[0], "myshell");
 	prompt_string = env_var_values[0];
 	
 	env_variables[1] = (char*)malloc(ENV_VAR_NMSIZE);
@@ -264,7 +268,7 @@ void init()
 /** Show Prompt **/
 void prompt()
 {
-	printf("%s", prompt_string);
+	printf("%s>", prompt_string);
 }
 
 /** Handle signal **/
