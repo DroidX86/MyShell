@@ -186,10 +186,18 @@ void install(char* progname, char* progloc)
 
 void show_help()
 {
-	printf("MyShell: A **very** limited shell\n\tCan only run single commands at a time. No piping or any of that fancy stuff.\n\n");
-	printf("Install your program by using the install command.\n\tinstall program_name program_location.\n");
-	printf("Set your environment variables using the set command.\n\tset variable value.\n");
-	printf("Unset your environment variables using the unset command.\n\tunset variable.\n\n");
+	printf("\t************************MyShell: A rather limited shell************************\n\n");	//how british of me
+	printf("*) SPECIAL COMMANDS:\n");
+	printf("\t--Install your program by using the install command.\n\t\t\"install program_name program_location\".\n");
+	printf("\t--Set your environment variables using the set command.\n\t\t\"set variable value\".\n");
+	printf("\t--Unset your environment variables using the unset command.\n\t\t\"unset variable\".\n\n");
+	printf("*) FEATURES:\n");
+	printf("\t--Supports piping\n\t\tONLY ONE PIPE though\n\t\tE.g. \"cmd1 ... | cmd2 ...\"\n");
+	printf("\t--Supports IO redirection\n\t\tinput redirection: \"cmd ... < file\"\n\t\toutput redirection: \"cmd ... > file\" or \"cmd ... >> file\"\n");
+	printf("\t--Supports conditional command execution\n\t\trun next command on success \"cmd1 ... && cmd2 ...\"\n\t\trun next command on failure \"cmd1 ... || cmd2 ...\"\n\n");
+	printf("*) BUGS: \n");
+	printf("\t--Having more than one pipe leads to stray processes that don't terminate\n");
+	printf("\t--A command may only be followed by A SINGLE command delimiter i.e &&, ||, |, > etc.\n\t\tso something like \"cmd1 ... > file && cmd2 ...\" is not allowed\n\n");
 	printf("***I take no responsibilty if the lack of features of this shell frustrates you into punching your monitor.***\n\t\t\t\tGood luck!\n");
 }
 
@@ -327,11 +335,6 @@ void execute_single_command()
 		}
 		c_envp[j] = NULL;
 		
-		/*printf("com: %s\n", com);
-		for(t=0; t<MAX_ARGS; t++){
-			printf("c_argv: %s\tc_envp: %s\n", c_argv[t], c_envp[t]);
-		}*/
-		
 		pid_t pid = fork();
 		if ( pid == 0 ) {
 			execve(com, c_argv, c_envp);
@@ -436,7 +439,7 @@ void execute_command_chain()
 	fdi       = the file descriptor used for input redirection
 	fdo       = the file descriptor used for output redirection
 	*/
-	int numcom=1, child_num = 0; //number of commands seen so far, and the number of children forked so far
+	int numcom = 1, child_num = 0; //number of commands seen so far, and the number of children forked so far
 	int to_pipe = 0, from_pipe, success = 0, failure = 0;
 	int oldpipe[2], newpipe[2], fdi, fdo;
 	
@@ -506,6 +509,7 @@ void execute_command_chain()
 		
 		//printf("old: <-%d==%d<-\n",oldpipe[0], oldpipe[1]);
 		//printf("new: <-%d==%d<-\n",newpipe[0], newpipe[1]);
+		
 		//fork here
 		pid_t cpid = fork();
 		numcom--;
@@ -744,11 +748,10 @@ int main(void)
 			
 		tokenize_command();
 		if ( !is_builtin() ) {
-			execute_command();
+			execute_command_chain();
 		}
 		clear_command();
-	}
-	*/
+	}*/
 	strcpy(command_line, "cat echoes.txt | tr [a-z] [A-Z] > echoes_1.txt");
 	//strcpy(command_line, "ls -l");
 	
@@ -764,6 +767,7 @@ int main(void)
 	//execute_single_command();
 	execute_command_chain();
 	
-	printf("\n");	
+	printf("\n");
+	show_help();
 	return 0;
 }
