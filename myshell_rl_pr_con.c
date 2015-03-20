@@ -101,8 +101,8 @@ void change_directory(char* wheretogo)
 		int e = chdir(wheretogo);
 		if (e != 0)
 			perror("chdir() error");
-
 	}
+	
 	for (i=0; i<env_var_count; i++) {
 		if (strcmp(env_variables[i], "PWD") == 0)
 			getcwd(env_var_values[i], ENV_VAR_SIZE);
@@ -349,10 +349,10 @@ void execute_single_command()
 		printf("Command not found!\n");
 }
 
-/** check if a command token is a pipe '|' or arrow '>', '<', '>>' **/
+/** check if a command token is a pipe '|' or arrow '>', '<', '>>' or conditional '&&', '||' **/
 int is_delimiter(char* token)
 {
-	if (!token){
+	if (!token) {
 		printf("NULL passed\n");
 		exit(EXIT_FAILURE);
 	}
@@ -411,7 +411,7 @@ int open_next_token(char *filename, int decide)
 	return fd;
 }
 
-/** multi child version of piping **/
+/** This function forks the children **/
 void execute_command_chain() 
 {
 	//set environment
@@ -425,12 +425,25 @@ void execute_command_chain()
 	}
 	c_envp[j] = NULL;
 	
-	int to_pipe = 0, from_pipe, numcom=1, child_num = 0, success = 0, failure = 0;
+	/* Flags and utilities
+	numcom    = number of commands to run
+	to_pipe	  = does the current command go to a pipe
+	from_pipe = does the current command come from a previous pipe
+	success   = is the current command subject to '&&'
+	failure   = is the current command subject to '||'
+	oldpipe   = a pipe (the pipe set up in the previous iteration; used for input if from-pipe is set)
+	newpipe   = another pipe (the pipe set up in this iteration ; used for output if to_pipe is set)
+	fdi       = the file descriptor used for input redirection
+	fdo       = the file descriptor used for output redirection
+	*/
+	int numcom=1, child_num = 0; //number of commands seen so far, and the number of children forked so far
+	int to_pipe = 0, from_pipe, success = 0, failure = 0;
 	int oldpipe[2], newpipe[2], fdi, fdo;
+	
+	int loc_index, next;
 	i=0;
 	
 	//decide flags for the first command
-	int loc_index, next;
 	next = i;
 	int decide = is_delimiter(command_tokens[next]);
 	while (1) {
@@ -486,7 +499,7 @@ void execute_command_chain()
 		oldpipe[0] = newpipe[0];
 		oldpipe[1] = newpipe[1];
 		if (to_pipe)			//create a new pipe if needed
-			if(pipe(newpipe) == -1){
+			if (pipe(newpipe) == -1) {
 				perror("Pipe error");
 				exit(EXIT_FAILURE);
 			}
@@ -581,11 +594,14 @@ void execute_command_chain()
 			//actually exec it
 			execve(com, c_argv, c_envp);
 			perror("execve error");
+			exit(EXIT_FAILURE);
 			
 		} else {		//parent
+		
 			child_num++;
 			if (!numcom)
 				break;
+				
 			//if success or failure flag was set, then wait for current child to finish before forking the next one
 			
 			
@@ -625,7 +641,9 @@ void execute_command_chain()
 			//printf("to_pipe: %d, from_pipe: %d, numcom: %d, success: %d, failure: %d\n", to_pipe, from_pipe, numcom, success, failure);
 			//printf("i: %d, next: %d\n", i, next);
 		}
+		
 	} while (numcom);
+	
 	printf("\n\nNumber of children: %d\n", child_num);
 	
 	int status;
