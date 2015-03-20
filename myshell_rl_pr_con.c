@@ -385,7 +385,7 @@ int open_next_token(char *filename, int decide)
 	}
 	int fd;
 	
-	fprintf(stderr,"filepath: %s\n", filepath);
+	//fprintf(stderr,"filepath: %s\n", filepath);
 	
 	switch (decide) {
 		case TAKE:
@@ -406,7 +406,7 @@ int open_next_token(char *filename, int decide)
 		exit(EXIT_FAILURE);
 	}
 	
-	fprintf(stderr,"fd: %d\n", fd);
+	//fprintf(stderr,"fd: %d\n", fd);
 	
 	return fd;
 }
@@ -527,7 +527,6 @@ void execute_command_chain()
 			//use next token as file for input
 				printf("%s is gonna take its input from %s/%s\n", com, pwd, command_tokens[next+1]);
 				fdi = open_next_token(command_tokens[next+1], decide);
-				printf("fdi:%d\n", fdi);
 				if (dup2(fdi, STDIN_FILENO) == -1) {
 					perror("dup2 error");
 					exit(EXIT_FAILURE);
@@ -668,11 +667,11 @@ void execute_command_chain()
 	int status;
 	if (child_num){
 		if (waitpid(-1, &status, 0) == -1) {
-			perror("wait() failed");
+			perror("wait() failed");	//wait for atleast one child to exit
 			exit(EXIT_FAILURE);
 		}
 		for (j=0; j<child_num-1; j++)
-			if (waitpid(-1, &status, WNOHANG) == -1) {
+			if (waitpid(-1, &status, WNOHANG) == -1) {	//don't wait for zombies
 				perror("wait() failed");
 				exit(EXIT_FAILURE);
 			}
@@ -750,7 +749,7 @@ int main(void)
 		clear_command();
 	}
 	*/
-	strcpy(command_line, "false || true || echo fucker");
+	strcpy(command_line, "cat echoes.txt | tr [a-z] [A-Z] > echoes_1.txt");
 	//strcpy(command_line, "ls -l");
 	
 	tokenize_command();

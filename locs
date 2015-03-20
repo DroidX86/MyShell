@@ -1,6 +1,7 @@
 ls:/home/rounak/Dropbox/Current Sem/Operating Systems/Lab/MyShell/ls
 pwd:/home/rounak/Dropbox/Current Sem/Operating Systems/Lab/MyShell/pwd
 echo:/home/rounak/Dropbox/Current Sem/Operating Systems/Lab/MyShell/echo
+envtest:/home/rounak/Dropbox/Current Sem/Operating Systems/Lab/MyShell/envtest
 clear:/usr/bin/clear
 reset:/usr/bin/reset
 cat:/bin/cat
@@ -8,7 +9,6 @@ cp:/bin/cp
 rm:/bin/rm
 mv:/bin/mv
 wc:/usr/bin/wc
-envtest:/home/rounak/Dropbox/Current Sem/Operating Systems/Lab/MyShell/envtest
 true:/bin/true
 false:/bin/false
 awk:/bin/awk
