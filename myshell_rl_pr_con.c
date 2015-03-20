@@ -603,7 +603,26 @@ void execute_command_chain()
 				break;
 				
 			//if success or failure flag was set, then wait for current child to finish before forking the next one
-			
+			int prev_stat;
+			if (success) {
+				if (waitpid(cpid, &prev_stat, 0) == -1) {
+					perror("success wait() failed");
+					exit(EXIT_FAILURE);
+				}
+				child_num--;
+				if (WIFEXITED(prev_stat))
+					if (WEXITSTATUS(prev_stat))
+						break;
+			} else if (failure) {
+				if (waitpid(cpid, &prev_stat, 0) == -1) {
+					perror("failure wait() failed");
+					exit(EXIT_FAILURE);
+				}
+				child_num--;
+				if (WIFEXITED(prev_stat))
+					if (!WEXITSTATUS(prev_stat))
+						break;
+			}
 			
 			//decide flags for next loop here
 			i = next+1;
@@ -647,8 +666,17 @@ void execute_command_chain()
 	printf("\n\nNumber of children: %d\n", child_num);
 	
 	int status;
-	for (j=0; j<child_num; j++)
-		waitpid(-1, &status, WNOHANG);
+	if (child_num){
+		if (waitpid(-1, &status, 0) == -1) {
+			perror("wait() failed");
+			exit(EXIT_FAILURE);
+		}
+		for (j=0; j<child_num-1; j++)
+			if (waitpid(-1, &status, WNOHANG) == -1) {
+				perror("wait() failed");
+				exit(EXIT_FAILURE);
+			}
+	}
 	
 	struct timespec hack_delay;
 	hack_delay.tv_sec = 0;
@@ -722,7 +750,7 @@ int main(void)
 		clear_command();
 	}
 	*/
-	strcpy(command_line, "ls -l | tr [a-z] [A-Z]");
+	strcpy(command_line, "false || true || echo fucker");
 	//strcpy(command_line, "ls -l");
 	
 	tokenize_command();
