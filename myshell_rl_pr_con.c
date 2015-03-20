@@ -25,6 +25,8 @@
 #define PIPE 36
 #define DUMP_APPEND 49
 #define TAKE 69
+#define RUN_SUCCESS 71	 
+#define RUN_FAILURE 88
 
 #define DELAY 5000000
 
@@ -348,8 +350,7 @@ void execute_single_command()
 }
 
 /** check if a command token is a pipe '|' or arrow '>', '<', '>>' **/
-//XXX: this stuff can be optimized
-int is_pipe_or_arrow(char* token)
+int is_delimiter(char* token)
 {
 	if (!token){
 		printf("NULL passed\n");
@@ -363,6 +364,10 @@ int is_pipe_or_arrow(char* token)
 		return TAKE;
 	else if (strcmp(token, ">>") == 0)
 		return DUMP_APPEND;
+	else if (strcmp(token, "&&") == 0)
+		return RUN_SUCCESS;
+	else if (strcmp(token, "||") == 0)
+		return RUN_FAILURE;
 	else
 		return 0;
 }
@@ -420,39 +425,51 @@ void execute_command_chain()
 	}
 	c_envp[j] = NULL;
 	
-	int to_pipe, from_pipe, numcom=1, child_num = 0;
+	int to_pipe = 0, from_pipe, numcom=1, child_num = 0, success = 0, failure = 0;
 	int oldpipe[2], newpipe[2], fdi, fdo;
 	i=0;
 	
 	//decide flags for the first command
 	int loc_index = is_installed(i),next;
 	next = i;
-	int decide = is_pipe_or_arrow(command_tokens[next]);
+	int decide = is_delimiter(command_tokens[next]);
 	while (1) {
 		if ((decide != 0) || next == num_tokens-1 ) //break if delimiter found or this is the last token
 			break;
 		++next;
-		decide = is_pipe_or_arrow(command_tokens[next]);
+		decide = is_delimiter(command_tokens[next]);
 	}
 	
-	if (decide == PIPE) {
-		to_pipe = 1;
-		numcom++;
-	}
-	else{
-		to_pipe = 0;
+	switch (decide) {
+		case PIPE:
+			to_pipe = 1;
+			numcom++;
+			break;
+		case RUN_SUCCESS:
+			success = 1;
+			numcom++;
+			break;
+		case RUN_FAILURE:
+			failure = 1;
+			numcom++;
+			break;
+		default:
+			//nothing to do here
+			break;
 	}
 		
 	from_pipe = 0;	//first command doesn't come from a pipe
 	
 	do {
 		printf("\nStart of shell loop:\n");
-		printf("to_pipe: %d, from_pipe: %d, numcom: %d\n", to_pipe, from_pipe, numcom);
+		printf("to_pipe: %d, from_pipe: %d, numcom: %d, success: %d, failure: %d\n", to_pipe, from_pipe, numcom, success, failure);
 		printf("i: %d, next: %d\n", i, next);
+		
 		if(loc_index == -1) {
 			printf("Command not found");
 			exit(EXIT_FAILURE);
 		}
+		
 		//set up argv for this command
 		j=1,k = i+1;
 		if (next == num_tokens-1)
@@ -569,27 +586,43 @@ void execute_command_chain()
 			child_num++;
 			if (!numcom)
 				break;
+			//if success or failure flag was set, then wait for current child to finish before forking the next one
+			
+			
 			//decide flags for next loop here
 			i = next+1;
 			from_pipe = to_pipe;
 			++next;			//next is now the command
-			decide = is_pipe_or_arrow(command_tokens[next]);
+			decide = is_delimiter(command_tokens[next]);
 			while (1) {
 				if ((decide != 0) || next == num_tokens-1 ) //break if delimiter found or this is the last token
 					break;
 				++next;
-				decide = is_pipe_or_arrow(command_tokens[next]);
+				decide = is_delimiter(command_tokens[next]);
 			}
 			
-			if (decide == PIPE){
-				to_pipe = 1;
-				numcom++;
-			} else {
-				to_pipe = 0;
+			to_pipe = success = failure = 0;
+			
+			switch (decide) {
+				case PIPE:
+					to_pipe = 1;
+					numcom++;
+					break;
+				case RUN_SUCCESS:
+					success = 1;
+					numcom++;
+					break;
+				case RUN_FAILURE:
+					failure = 1;
+					numcom++;
+					break;
+				default:
+					//nothing to do here
+					break;
 			}
 			//parent continues with loop, next iteration would use decide, to_pipe, old_pipe
 			//printf("End of shell loop:\n");
-			//printf("to_pipe: %d, from_pipe: %d, numcom: %d\n", to_pipe, from_pipe, numcom);
+			//printf("to_pipe: %d, from_pipe: %d, numcom: %d, success: %d, failure: %d\n", to_pipe, from_pipe, numcom, success, failure);
 			//printf("i: %d, next: %d\n", i, next);
 		}
 	} while (numcom);
@@ -671,7 +704,7 @@ int main(void)
 		clear_command();
 	}
 	*/
-	strcpy(command_line, "tr [a-z] [A-z] < echoes.txt");
+	strcpy(command_line, "ls -l | tr [a-z] [A-Z]");
 	//strcpy(command_line, "ls -l");
 	
 	tokenize_command();

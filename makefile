@@ -9,6 +9,9 @@ final_myshell:myshell_rl_pr.c
 
 backup_myshell:myshell_rl_pr2.c
 	gcc -g myshell_rl_pr2.c -o backup_myshell -lreadline
+
+pro_myshell:myshell_rl_pr_con.c
+	gcc -g myshell_rl_pr_con.c -o pro_myshell -lreadline
 	
 ls:ls.c
 	gcc -g ls.c -o ls
