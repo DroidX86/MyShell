@@ -43,6 +43,7 @@ int num_progs;
 char* c_argv[MAX_ARGS];
 char* c_envp[MAX_ENV_VARS];
 
+int ps_is_pwd;
 
 //environment variables
 char* env_variables[MAX_ENV_VARS];
@@ -109,7 +110,8 @@ void change_directory(char* wheretogo)
 			getcwd(env_var_values[i], ENV_VAR_SIZE);
 	}
 	update_pwd_string();
-	strcpy(prompt_string, pwd);
+	if (ps_is_pwd)
+		strcpy(prompt_string, pwd);
 }
 
 void print_environment()
@@ -132,8 +134,11 @@ void set_env_variable(char* key, char* value)
 			if ( strcmp(key, env_variables[i]) == 0) {
 				if ( (strcmp(key, "PS") == 0) && (strcmp(value, "pwd") == 0) ) {
 					strcpy(prompt_string, pwd);
+					ps_is_pwd = 1;
 					return;
 				}
+				if (strcmp(key, "PS") == 0) 
+					ps_is_pwd = 0;
 				free(env_var_values[i]);
 				env_var_values[i] = (char*)malloc(ENV_VAR_SIZE);
 				strcpy(env_var_values[i], value);
@@ -247,6 +252,7 @@ void init()
 	set_default_env_vars();	
 	
 	num_progs = 0;
+	ps_is_pwd = 0;
 	int i;
 	for(i=0; i<MAX_PROGS; i++){
 		programs[i] = (char*)malloc(MAX_PROG_NAME);
