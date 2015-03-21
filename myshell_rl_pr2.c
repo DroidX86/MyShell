@@ -15,6 +15,7 @@
 #define MAX_PROGS 100
 #define MAX_ARGS 200
 #define MAX_TOKENS 200
+#define MAX_TOKEN_LEN 256
 #define MAX_PROG_NAME 64
 #define MAX_PROG_LOC 512
 #define MAX_ENV_VARS 100
@@ -271,21 +272,96 @@ void clear_command()
 	//free(command_line);
 	int i;
 	for(i=0; i<num_tokens; i++){
-		//free(command_tokens[i]);
+		free(command_tokens[i]);
 		command_tokens[i] = NULL;
 	}
 	num_tokens = 0;
 }
 
+/** checking if a character is whitespace **/
+int is_whitespace(char c)
+{
+	switch(c){
+		case '\t':
+		case ' ':
+			return 1;
+		default:
+			return 0;
+	}
+}
+
 /** Tokenize the line read **/
 void tokenize_command()
 {
-	char* tok_buffer = strtok(command_line, " ");
-	while(tok_buffer != NULL){
-		command_tokens[num_tokens] = tok_buffer;
-		num_tokens++;
-		tok_buffer = strtok(NULL, " ");
+	if (!command_line) {
+		frpintf(stderr, "Nul passed to tokenizer\n");
+		return;
 	}
+	char *acc = (char*)calloc(MAX_TOKEN_LEN, sizeof(char));
+	int quoted = 0, escaped = 0, i = 0, j = 0, k = 0;
+	char cur = command_line[i];
+	while(cur) {
+		printf("@cur: %c :::: acc: %s, quoted: %d, escaped: %d\n", cur, acc, quoted, escaped);
+		if (cur == '\"') {
+			quoted++;
+			cur = command_line[++i];
+			continue;
+		}
+		if (cur == '\\') {
+			escaped = 1;
+			cur = command_line[++i];
+			continue;
+		}
+		
+		if (quoted == 1) {
+			acc[j++] = cur;
+			cur = command_line[++i];
+			continue;
+		} else if (quoted==2) {
+			int l = strlen(acc);
+			if (l > 0) {
+				command_tokens[k] = (char *)malloc( l*sizeof(char) );
+				strcpy(command_tokens[k], acc);
+				++k;
+				free(acc);
+				acc = (char*)calloc(MAX_TOKEN_LEN, sizeof(char));
+				j = 0;
+			
+			}
+			quoted = 0;
+		}
+		if (escaped) {
+			acc[j++] = cur;
+			cur = command_line[++i];
+			escaped = 0;
+			continue;
+		}
+		
+		if (is_whitespace(cur)) {
+			int l = strlen(acc);
+			if (l > 0) {
+				command_tokens[k] = (char *)malloc( l*sizeof(char) );
+				strcpy(command_tokens[k], acc);
+				++k;
+				free(acc);
+				acc = (char*)calloc(MAX_TOKEN_LEN, sizeof(char));
+				j = 0;
+			}
+		} else {
+			acc[j++] = cur;
+		}
+		cur = command_line[++i];
+	}
+	int l = strlen(acc);
+	if (l > 0) {
+		command_tokens[k] = (char *)malloc( l*sizeof(char) );
+		strcpy(command_tokens[k], acc);
+		++k;
+		free(acc);
+		acc = (char*)calloc(MAX_TOKEN_LEN, sizeof(char));
+		j = 0;
+	}
+	num_tokens = k;
 }
 
 /** Search command_name against list of installed programs in locs **/
@@ -671,21 +747,22 @@ int main(void)
 		clear_command();
 	}
 	*/
-	strcpy(command_line, "tr [a-z] [A-z] < echoes.txt");
+	strcpy(command_line, "");
 	//strcpy(command_line, "ls -l");
 	
 	tokenize_command();
 	
 	int i;
 	printf("Tokens array: \n");
-	for (i=0; i< num_tokens; i++) {
+	
+	for (i=0; i< num_tokens; i++) 
 		printf("%d = %s\n", i, command_tokens[i]);
-	}
+		
 	printf("End of tokens array\n\n");
 	
 	//execute_single_command();
-	execute_command_chain();
-	
-	printf("\n");	
+	//execute_command_chain();
+	clear_command();
+	printf("\n");
 	return 0;
 }
