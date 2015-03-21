@@ -286,8 +286,8 @@ void clear_command()
 	//free(command_line);
 	int i;
 	for(i=0; i<num_tokens; i++){
-		//free(command_tokens[i]);
-		//command_tokens[i] = NULL;
+		free(command_tokens[i]);
+		command_tokens[i] = NULL;
 	}
 	num_tokens = 0;
 }
