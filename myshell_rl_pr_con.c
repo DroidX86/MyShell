@@ -138,7 +138,6 @@ void set_env_variable(char* key, char* value)
 				env_var_values[i] = (char*)malloc(ENV_VAR_SIZE);
 				strcpy(env_var_values[i], value);
 				update_prompt_string();
-				update_pwd_string();
 				return;
 			}
 		}

@@ -1,14 +1,14 @@
-myshell:myshell.c
-	gcc -g myshell.c -o myshell
+myshell:./Other/myshell.c
+	gcc -g ./Other/myshell.c -o ./Other/myshell
 	
-myshell_rl:myshell_rl.c
-	gcc -g myshell_rl.c -o myshell_rl -lreadline
+myshell_rl:./Other/myshell_rl.c
+	gcc -g ./Other/myshell_rl.c -o ./Other/myshell_rl -lreadline
 
-final_myshell:myshell_rl_pr.c
-	gcc -g myshell_rl_pr.c -o final_myshell -lreadline
+final_myshell:./Other/myshell_rl_pr.c
+	gcc -g ./Other/myshell_rl_pr.c -o ./Other/final_myshell -lreadline
 
-backup_myshell:myshell_rl_pr2.c
-	gcc -g myshell_rl_pr2.c -o backup_myshell -lreadline
+backup_myshell:./Other/myshell_rl_pr2.c
+	gcc -g ./Other/myshell_rl_pr2.c -o ./Other/backup_myshell -lreadline
 
 pro_myshell:myshell_rl_pr_con.c
 	gcc -g myshell_rl_pr_con.c -o pro_myshell -lreadline
