@@ -343,7 +343,7 @@ void tokenize_command(void)
 	}
 	char *acc = (char *)calloc(MAX_TOKEN_LEN, sizeof(char));
 
-	int quoted = 0, escaped = 0, i = 0, j = 0, k = 0;
+	int quoted = 0, escaped = 0, i = 0, j = 0, k = 0, l;
 
 	char cur = command_line[i];
 
@@ -365,8 +365,7 @@ void tokenize_command(void)
 			cur = command_line[++i];
 			continue;
 		} else if (quoted == 2) {
-			int l = strlen(acc);
-
+			l = strlen(acc);
 			if (l > 0) {
 				command_tokens[k] = (char *)malloc(l*sizeof(char));
 				strcpy(command_tokens[k], acc);
@@ -384,8 +383,7 @@ void tokenize_command(void)
 			continue;
 		}
 		if (is_whitespace(cur)) {
-			int l = strlen(acc);
-
+			l = strlen(acc);
 			if (l > 0) {
 				command_tokens[k] = (char *)malloc(l*sizeof(char));
 				strcpy(command_tokens[k], acc);
@@ -399,8 +397,7 @@ void tokenize_command(void)
 		}
 		cur = command_line[++i];
 	}
-	int l = strlen(acc);
-
+	l = strlen(acc);
 	if (l > 0) {
 		command_tokens[k] = (char *)malloc(l*sizeof(char));
 		strcpy(command_tokens[k], acc);
