@@ -354,12 +354,6 @@ void tokenize_command(void)
 			cur = command_line[++i];
 			continue;
 		}
-		if (cur == '\\') {
-			escaped = 1;
-			cur = command_line[++i];
-			continue;
-		}
-
 		if (quoted == 1) {
 			acc[j++] = cur;
 			cur = command_line[++i];
@@ -376,6 +370,13 @@ void tokenize_command(void)
 			}
 			quoted = 0;
 		}
+
+		if (cur == '\\') {
+			escaped = 1;
+			cur = command_line[++i];
+			continue;
+		}
+
 		if (escaped) {
 			acc[j++] = cur;
 			cur = command_line[++i];
@@ -555,13 +556,9 @@ void execute_command_chain(void)
 	fdo       = the file descriptor used for output redirection
 	*/
 	int numcom = 1, child_num = 0; /*number of commands seen so far, and the number of children forked so far*/
-
 	int to_pipe = 0, from_pipe, success = 0, failure = 0;
-
 	int oldpipe[2], newpipe[2], fdi, fdo;
-
 	int was_piped = 0, was_redirected = 0;
-
 	int loc_index, next;
 
 	i = 0;
@@ -590,6 +587,11 @@ void execute_command_chain(void)
 	case RUN_FAILURE:
 		failure = 1;
 		numcom++;
+		break;
+	case DUMP_APPEND:
+	case DUMP_CLEAR:
+	case TAKE:
+		was_redirected = 1;
 		break;
 	default:
 		/*nothing to do here*/
@@ -647,7 +649,6 @@ void execute_command_chain(void)
 			if (from_pipe) {
 				/*if child comes from a pipe, use oldpipe for input*/
 				/*printf("%s is gonna pipe its input from %d=%d\n", com, oldpipe[0], oldpipe[1]);*/
-				was_redirected = 1;
 				if (dup2(oldpipe[0], STDIN_FILENO) == -1) {
 					perror("dup2 error");
 					exit(EXIT_FAILURE);
@@ -678,7 +679,6 @@ void execute_command_chain(void)
 			} else if (decide == DUMP_CLEAR) {
 				/*use next token as file for output */
 				/*printf("%s is gonna dump its output to %s/%s\n", com, pwd, command_tokens[next+1]);*/
-				was_redirected = 1;
 				fdo = open_next_token(command_tokens[next+1], decide);
 				if (dup2(fdo, STDOUT_FILENO) == -1) {
 					perror("dup2 error");
@@ -688,7 +688,6 @@ void execute_command_chain(void)
 			} else if (decide == DUMP_APPEND) {
 				/*use next token as file for output */
 				/*printf("%s is gonna append its output to %s/%s\n", com, pwd, command_tokens[next+1]);*/
-				was_redirected = 1;
 				fdo = open_next_token(command_tokens[next+1], decide);
 				if (dup2(fdo, STDOUT_FILENO) == -1) {
 					perror("dup2 error");
@@ -782,6 +781,11 @@ void execute_command_chain(void)
 			case RUN_FAILURE:
 				failure = 1;
 				numcom++;
+				break;
+			case DUMP_APPEND:
+			case DUMP_CLEAR:
+			case TAKE:
+				was_redirected = 1;
 				break;
 			default:
 				/*nothing to do here*/
