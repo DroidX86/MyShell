@@ -271,7 +271,6 @@ void init(void)
 	}
 
 	char buf[256];
-
 	char *split_line;
 
 	while (fgets(buf, sizeof(buf), progfile)) {
@@ -332,9 +331,7 @@ void tokenize_command(void)
 		return;
 	}
 	char *acc = (char *)calloc(MAX_TOKEN_LEN, sizeof(char));
-
 	int quoted = 0, escaped = 0, i = 0, j = 0, k = 0, l;
-
 	char cur = command_line[i];
 
 	while (cur) {
@@ -418,7 +415,6 @@ void execute_single_command(void)
 
 	if (loc_index != -1) {
 		char *com = prog_locs[loc_index];
-
 		int i = 1, t, j;
 
 		/*set arguments*/
