@@ -66,20 +66,6 @@ void update_prompt_string(void)
 	perror("PS not found in list of environment variables");
 }
 
-/** Update the pwd if set has been used **/
-void update_pwd_string(void)
-{
-	int i = 0;
-
-	for (; i < env_var_count; i++) {
-		if (strcmp(env_variables[i], "PWD") == 0) {
-			strcpy(pwd, env_var_values[i]);
-			return;
-		}
-	}
-	perror("PS not found in list of environment variables");
-}
-
 /** Trailing whitespace removal **/
 void rstrip(char *str)
 {
@@ -111,10 +97,11 @@ void change_directory(char *wheretogo)
 	}
 
 	for (i = 0; i < env_var_count; i++) {
-		if (strcmp(env_variables[i], "PWD") == 0)
+		if (strcmp(env_variables[i], "PWD") == 0) {
 			getcwd(env_var_values[i], ENV_VAR_SIZE);
+			strcpy(pwd, env_var_values[i]);
+		}
 	}
-	update_pwd_string();
 	if (ps_is_pwd)
 		strcpy(prompt_string, pwd);
 }
@@ -131,6 +118,9 @@ void print_environment(void)
 void set_env_variable(char *key, char *value)
 {
 	int i;
+	
+	if (strcmp(key, "PWD") == 0)
+		return;
 
 	for (i = 0; i < env_var_count; i++) {
 		/*printf("ev: %s\n", env_variables[i]);*/
