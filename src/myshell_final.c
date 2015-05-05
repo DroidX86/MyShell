@@ -326,8 +326,8 @@ int is_whitespace(char c)
 /** Tokenize the line read **/
 void tokenize_command(void)
 {
-	if (!command_line) {
-		frpintf(stderr, "Nul passed to tokenizer\n");
+	if (!(*command_line)) {
+		fprintf(stderr, "Nul passed to tokenizer\n");
 		return;
 	}
 	char *acc = (char *)calloc(MAX_TOKEN_LEN, sizeof(char));
@@ -415,7 +415,7 @@ void execute_single_command(void)
 
 	if (loc_index != -1) {
 		char *com = prog_locs[loc_index];
-		int i = 1, t, j;
+		int i = 1, j;
 
 		/*set arguments*/
 		for (; i < num_tokens; i++)
@@ -439,8 +439,6 @@ void execute_single_command(void)
 			perror("execve failed");
 			exit(EXIT_FAILURE);
 		} else if (pid > 0) {
-			pid_t cpid;
-
 			if (wait(NULL) == -1)
 				perror("wait() error");
 
@@ -873,7 +871,7 @@ int main(void)
 		strcpy(command_line, readline(""));
 		if (strcmp(command_line, "") == 0)
 			continue;
-		if (*command_line && command_line)
+		if (*command_line)
 			add_history(command_line);
 		tokenize_command();
 		if (!is_builtin())
