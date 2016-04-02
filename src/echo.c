@@ -1,7 +1,7 @@
-#include<stdio.h>
-#include<string.h>
-#include<stdlib.h>
-#include<unistd.h>
+#include <stdio.h>
+#include <string.h>
+#include <stdlib.h>
+#include <unistd.h>
 
 int main( int argc, char* argv[], char* envp[] )
 {
@@ -9,13 +9,13 @@ int main( int argc, char* argv[], char* envp[] )
 		printf("Usage: \n\t-e: enables escape characters (\\a, \\b, \\t, \\n, \\r, \\v)\n\t-n: removes the trailing newline\n");
 		exit(EXIT_SUCCESS);
 	}
-	
+
 	//get rid of this later
 	if ((strcmp(argv[1], "es"))== 0) {
 		system("cat echoes.txt");
 		exit(EXIT_SUCCESS);
 	}
-	
+
 	//process the options
 	int escape = 0, newline = 1, opt;
 	while ((opt = getopt(argc, argv, "ne")) != -1) {
@@ -31,7 +31,7 @@ int main( int argc, char* argv[], char* envp[] )
 				exit(EXIT_FAILURE);
 		}
 	}
-	
+
 	//handle case of no arguments
 	if (optind >= argc) {
 		if (newline) {
@@ -39,7 +39,7 @@ int main( int argc, char* argv[], char* envp[] )
 		}
 		exit(EXIT_SUCCESS);
 	}
-	
+
 	//handle each argument
 	int i;
 	for (i=optind; i<argc; i++) {
@@ -50,9 +50,9 @@ int main( int argc, char* argv[], char* envp[] )
 			int si=0, di=0, eflag=0;
 			for (; si<strlen(argv[i]); si++) {
 				if (eflag == 0) {
-					if (argv[i][si] != '\\') 
+					if (argv[i][si] != '\\')
 						dest[di++] = argv[i][si];
-					else 
+					else
 						eflag = 1;
 				} else if (eflag == 1) {
 					switch (argv[i][si]) {
@@ -75,6 +75,6 @@ int main( int argc, char* argv[], char* envp[] )
 	 if (newline) {
 	 	printf("\n");
 	 }
-	
+
 	return 0;
 }

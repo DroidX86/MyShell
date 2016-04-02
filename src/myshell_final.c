@@ -1,15 +1,15 @@
-#include<stdio.h>
-#include<string.h>
-#include<stdlib.h>
-#include<signal.h>
-#include<unistd.h>
-#include<time.h>
-#include<sys/types.h>
-#include<sys/wait.h>
-#include<sys/stat.h>
-#include<fcntl.h>
-#include<readline/readline.h>
-#include<readline/history.h>
+#include <stdio.h>
+#include <string.h>
+#include <stdlib.h>
+#include <signal.h>
+#include <unistd.h>
+#include <time.h>
+#include <sys/types.h>
+#include <sys/wait.h>
+#include <sys/stat.h>
+#include <fcntl.h>
+#include <readline/readline.h>
+#include <readline/history.h>
 
 #define MAX_COMMAND_LEN 1024
 #define MAX_PROGS 100
@@ -118,7 +118,7 @@ void print_environment(void)
 void set_env_variable(char *key, char *value)
 {
 	int i;
-	
+
 	if (strcmp(key, "PWD") == 0)
 		return;
 

@@ -1,7 +1,6 @@
-ls:/home/rounak/Dropbox/Current Sem/Operating Systems/Lab/MyShell/ls
-pwd:/home/rounak/Dropbox/Current Sem/Operating Systems/Lab/MyShell/pwd
-echo:/home/rounak/Dropbox/Current Sem/Operating Systems/Lab/MyShell/echo
-envtest:/home/rounak/Dropbox/Current Sem/Operating Systems/Lab/MyShell/envtest
+ls:/bin/ls
+pwd:/bin/pwd
+echo:/bin/echo
 clear:/usr/bin/clear
 reset:/usr/bin/reset
 cat:/bin/cat
